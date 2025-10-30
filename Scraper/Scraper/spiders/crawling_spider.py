@@ -17,7 +17,7 @@ class DatartSpider(CrawlSpider):
             ".product-detail__bottom-bar.js-product-detail-bottom-bar::attr(data-gtm-data-product)").get()
 
         if data_attr:
-
+            # 
             data_json = json.loads(data_attr.replace("&quot;", '"'))
             item_name = data_json.get("item_name")
         else:
