@@ -24,6 +24,8 @@ class DatartSpider(CrawlSpider):
             data_attr = product_box.css("::attr(data-gtm-data-product)").get()
             item_name = None
             item_price = None
+            item_link = None
+            item_rating = None
 
             # extrakt jmena
             if data_attr:
@@ -36,6 +38,17 @@ class DatartSpider(CrawlSpider):
             # extrakt ceny
             item_price = product_box.css('[data-product-price]::attr(data-product-price)').get()
 
+            # extrakt linku na produkt
+            item_link = product_box.css('a::attr(href)').get()
+            if item_link:
+                item_link = response.urljoin(item_link)
+
+            # extrakt hodnoceni
+            item_rating = product_box.css('.rating-wrap span.bold::text').get()
+            if item_rating:
+                item_rating = item_rating.strip()
+            
+
             # vysledny yield
             if item_name:
                 yield_item = {
@@ -46,4 +59,12 @@ class DatartSpider(CrawlSpider):
                 if item_price:
                     yield_item["price"] = item_price
                 
+                # pokud extraknul link na produkt, prida se cena do yieldu
+                if item_link:
+                    yield_item["link"] = item_link
+
+                # pokud extraknul hodnoceni, prida se cena do yieldu
+                if item_rating:
+                    yield_item["rating"] = item_rating
+
                 yield yield_item
