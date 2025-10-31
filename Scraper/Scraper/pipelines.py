@@ -1,16 +1,15 @@
 import sqlite3
 from itemadapter import ItemAdapter
 
-# The class name MUST be 'ScraperPipeline' to match the entry in settings.py:
-# ITEM_PIPELINES = { "Scraper.pipelines.ScraperPipeline": 300 }
+# class name MUSÍ byt 'ScraperPipelines' aby odpovidal settings.py:
 class ScraperPipeline:
     
     def open_spider(self, spider):
-        # 1. Connect to the central database file
+        # pripojeni k databazi
         self.conn = sqlite3.connect('comparison_data.db')
         self.cur = self.conn.cursor()
         
-        # 2. Create the products table if it doesn't exist
+        # vytvori produkty pokud jiz neexistuji
         # PRIMARY KEY (title, source_site) ensures one unique row per product per site, 
         # enabling the INSERT OR REPLACE INTO behavior.
         self.cur.execute("""
