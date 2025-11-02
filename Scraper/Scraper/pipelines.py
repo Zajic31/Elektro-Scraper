@@ -19,6 +19,7 @@ class ScraperPipeline:
                 rating REAL,
                 link TEXT,
                 source_site TEXT,
+                category TEXT,
                 crawled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (title, source_site)
             )
@@ -40,14 +41,15 @@ class ScraperPipeline:
         # The row is replaced entirely if the combination of (title, source_site) exists.
         try:
             self.cur.execute("""
-                INSERT OR REPLACE INTO products (title, price, rating, link, source_site)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO products (title, price, rating, link, source_site, category)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 adapter.get('title'),
                 adapter.get('price'),
                 adapter.get('rating'),
                 adapter.get('link'),
-                spider.name  # Stores 'dtrspider', 'alza_spider', etc.
+                spider.name,  # Stores 'dtrspider', 'alza_spider', etc.
+                adapter.get('category')
             ))
             
             self.conn.commit()

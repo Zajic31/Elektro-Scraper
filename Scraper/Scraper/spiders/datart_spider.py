@@ -26,12 +26,19 @@ class DatartSpider(CrawlSpider):
             item_price = None
             item_link = None
             item_rating = None
+            item_category = None
 
             # extrakt jmena
             if data_attr:
                 try:
                     data_json = json.loads(data_attr.replace("&quot;", '"'))
                     item_name = data_json.get("item_name")
+                    full_category = data_json.get("item_category")
+
+                    if full_category:
+                        segments = [s.strip() for s in full_category.split('/') if s.strip()]
+                        if segments:
+                             item_category = segments[-1]
                 except json.JSONDecodeError:
                     self.logger.warning(f"Failed to decode JSON for a product box.")
                     pass
@@ -47,6 +54,8 @@ class DatartSpider(CrawlSpider):
             item_rating = product_box.css('.rating-wrap span.bold::text').get()
             if item_rating:
                 item_rating = item_rating.strip()
+            
+            
             
 
             # vysledny yield
@@ -66,5 +75,9 @@ class DatartSpider(CrawlSpider):
                 # pokud extraknul hodnoceni, prida se cena do yieldu
                 if item_rating:
                     yield_item["rating"] = item_rating
+
+                # pokud extraknul kategorii, prida se cena do yieldu
+                if item_category:
+                    yield_item["category"] = item_category
 
                 yield yield_item
