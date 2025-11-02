@@ -1,0 +1,147 @@
+/* --- General & Layout --- */
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    margin: 0; 
+    background-color: #f0f2f5; 
+    color: #333;
+}
+.header {
+    background-color: #007bff;
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.header h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+.main-content {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Search Form --- */
+.search-container {
+    display: flex;
+    gap: 10px;
+}
+#search_item {
+    flex-grow: 1;
+    padding: 12px;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+#search_item:focus {
+    border-color: #007bff;
+    outline: none;
+}
+#search-button {
+    padding: 12px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+#search-button:hover {
+    background-color: #1f7d34;
+}
+
+/* --- Modal (Pop-up) Styling --- */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; 
+    z-index: 10; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+    padding-top: 60px;
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto; /* 5% from the top and centered */
+    padding: 30px;
+    border-radius: 10px;
+    width: 80%; 
+    max-width: 700px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    animation-name: animatetop;
+    animation-duration: 0.4s;
+}
+@keyframes animatetop {
+    from {top: -300px; opacity: 0}
+    to {top: 0; opacity: 1}
+}
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+.close-btn:hover,
+.close-btn:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* --- Product Card in Modal --- */
+.result-card {
+    border-bottom: 1px solid #eee;
+    padding: 15px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.result-card:last-child {
+    border-bottom: none;
+}
+.details {
+    flex-grow: 1;
+}
+.title-site {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #333;
+}
+.site-info {
+    font-size: 0.85em;
+    color: #666;
+}
+.price-rating {
+    text-align: right;
+    margin-left: 20px;
+}
+.price-rating .price {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #dc3545;
+}
+.price-rating .rating {
+    color: gold;
+    font-weight: 600;
+}
+.view-link {
+    margin-left: 15px;
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+.view-link:hover {
+    background-color: #0056b3;
+}

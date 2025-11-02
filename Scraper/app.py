@@ -1,63 +1,56 @@
 import sqlite3
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify # Import jsonify here
 
 # Initialize Flask application
 app = Flask(__name__)
 
-# --- Database Interaction Function ---
+# --- Database Interaction Function (Same as before) ---
 def search_database(query):
     """Searches the SQLite database for products matching the query."""
     
-    # 1. Connect to the database file
-    # Ensure this path matches the file created by your Scrapy pipeline
     conn = sqlite3.connect('comparison_data.db')
     cur = conn.cursor()
     
-    # 2. Define the search SQL query
-    # It searches for the query string in the 'title' column (case-insensitive)
     sql_query = """
         SELECT title, price, rating, link, source_site 
         FROM products 
         WHERE title LIKE ?
     """
     
-    # 3. Execute the query
-    # The '%' symbols allow for partial matching
     search_term = f'%{query}%'
     cur.execute(sql_query, (search_term,))
     
-    # 4. Fetch all results
-    results = cur.fetchall()
+    # Fetch results and include column names for better JSON structure
+    columns = [desc[0] for desc in cur.description]
+    results = [dict(zip(columns, row)) for row in cur.fetchall()]
     
-    # 5. Close the connection
     conn.close()
     
     return results
 
 # --- Flask Routes (URLs) ---
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
-    """Handles the home page, search form submission, and displays results."""
+    """Handles the initial home page load (GET request)."""
+    # Only render the HTML template; search happens via AJAX now.
+    return render_template('index.html')
+
+
+# --- NEW DYNAMIC SEARCH ROUTE ---
+@app.route('/search', methods=['POST'])
+def search_api():
+    """Handles AJAX POST requests from the front-end and returns JSON data."""
+    # Get the search term from the JSON payload
+    data = request.get_json()
+    search_query = data.get('query', '').strip()
     
-    results = []
-    search_query = ""
-
-    if request.method == 'POST':
-        # Get the search term from the submitted form
-        search_query = request.form.get('search_item', '').strip()
-        if search_query:
-            # Run the search function
-            results = search_database(search_query)
-
-    # Render the HTML template, passing the results and query
-    return render_template(
-        'index.html', 
-        results=results, 
-        query=search_query
-    )
+    if search_query:
+        results = search_database(search_query)
+        # Return the data as JSON
+        return jsonify({'results': results})
+        
+    return jsonify({'results': []}) # Return empty list if query is empty
 
 if __name__ == '__main__':
-    # Run the application
-    # You can access it in your browser at http://127.0.0.1:5000/
     app.run(debug=True)

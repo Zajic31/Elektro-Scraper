@@ -3,61 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Price Comparison Scraper</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
-        .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        .search-form { display: flex; margin-bottom: 20px; }
-        .search-form input[type="text"] { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px 0 0 4px; font-size: 16px; }
-        .search-form button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 0 4px 4px 0; cursor: pointer; }
-        .product-list { margin-top: 20px; }
-        .product-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
-        .product-details { flex-grow: 1; }
-        .product-info { font-size: 1.2em; font-weight: bold; color: #007bff; }
-        .product-link a { color: #28a745; text-decoration: none; font-weight: bold; }
-        .price { font-size: 1.5em; color: #dc3545; font-weight: bold; margin-left: 20px; }
-    </style>
+    <title>⚡ Price Comparison Dashboard</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>🔍 Product Comparison Search</h1>
-        
-        <form method="POST" class="search-form">
-            <input type="text" name="search_item" placeholder="Search for a refrigerator, phone, TV, etc." value="{{ query }}">
-            <button type="submit">Search</button>
-        </form>
-
-        {% if query and not results %}
-            <p>No results found for "{{ query }}". Try a different search term.</p>
-        {% elif results %}
-            <h2>Results for "{{ query }}" ({{ results | length }} found)</h2>
-            <div class="product-list">
-                {% for item in results %}
-                    <div class="product-card">
-                        <div class="product-details">
-                            <div class="product-info">{{ item[0] }}</div>
-                            <small>Source: <strong>{{ item[4] }}</strong></small>
-                            <br>
-                            <small>Rating: 
-                                {% if item[2] %}
-                                    <strong>{{ item[2] }} / 5</strong> ⭐
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </small>
-                        </div>
-                        
-                        <div class="price">{{ "{:,.2f}".format(item[1]) }} Kč</div>
-                        <div class="product-link">
-                            <a href="{{ item[3] }}" target="_blank">View Product</a>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <p>Enter a search term above to find product comparisons from your scraped data.</p>
-        {% endif %}
+    <div class="header">
+        <h1>⚡ Price Comparison Dashboard</h1>
+        <p>Search your scraped products to find the best deals.</p>
     </div>
+
+    <div class="main-content">
+        <h2>Find Products</h2>
+        
+        <div class="search-container">
+            <input type="text" id="search_item" placeholder="Enter product name (e.g., Samsung Refrigerator)">
+            <button id="search-button">Search</button>
+        </div>
+        
+        <p id="status-message" style="margin-top: 15px; color: #666;"></p>
+    </div>
+
+    <div id="resultsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">Search Results</h2>
+            <div id="modal-body">
+                </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
