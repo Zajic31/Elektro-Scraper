@@ -8,7 +8,7 @@ class DatartSpider(CrawlSpider):
     start_urls = ["https://www.datart.cz/"]
 
     rules = (
-        Rule(LinkExtractor(allow=(r"/[a-z0-9-]+\.html$", r"/[a-z0-9-]+/strana-[0-9]+\.html$"), deny=(r"-[0-9a-z]{5,}\.html$")), callback="parse_list", follow=True),
+        Rule(LinkExtractor(allow=(r"/[a-z0-9-]+\.html($|\?.+$)", r"/[a-z0-9-]+/strana-[0-9]+\.html$"), deny=(r"-[0-9a-z]{5,}\.html$", r".*/vyprodej-poslednich-kusu\.html")), callback="parse_list", follow=True),
     )
     
     def parse_list(self, response):
