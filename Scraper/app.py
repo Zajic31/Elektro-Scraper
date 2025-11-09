@@ -1,56 +1,93 @@
 import sqlite3
-from flask import Flask, render_template, request, jsonify # Import jsonify here
+# Musíme importovat i send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory 
 
-# Initialize Flask application
+DATABASE = 'comparison_data.db' 
 app = Flask(__name__)
 
-# --- Database Interaction Function (Same as before) ---
-def search_database(query):
-    """Searches the SQLite database for products matching the query."""
+# --- 1. Pomocné Funkce pro Databázi ---
+
+def get_db_connection():
+    """Vytvoří a vrátí spojení s databází."""
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # Aby se výsledky vracely jako slovníky
+    return conn
+
+def fetch_all_products():
+    """Načte VŠECHNY produkty pro hlavní zobrazení a filtry."""
+    conn = get_db_connection()
     
-    conn = sqlite3.connect('comparison_data.db')
-    cur = conn.cursor()
-    
+    # PŘEDPOKLAD: Tvá tabulka se jmenuje 'products'
+    # POZNÁMKA: V tvé DB se prodejce jmenuje 'source_site' (BEZ pomlčky), tak to musí být i v SELECT
     sql_query = """
-        SELECT title, price, rating, link, source_site 
+        SELECT title, price, rating, link, source_site, category 
+        FROM products 
+    """ 
+    # !!! ODSTRANĚNO: LIMIT 100 !!!
+    
+    results = [dict(row) for row in conn.execute(sql_query).fetchall()]
+    conn.close()
+    return results
+
+def search_database(query):
+    """Provede vyhledávání podle dotazu (používá se pro /search)."""
+    conn = get_db_connection()
+    
+    # !!! OPRAVA: Přidán 'category' do SELECT, aby se modální okno vykreslilo !!!
+    sql_query = """
+        SELECT title, price, rating, link, source_site, category
         FROM products 
         WHERE title LIKE ?
     """
     
     search_term = f'%{query}%'
-    cur.execute(sql_query, (search_term,))
-    
-    # Fetch results and include column names for better JSON structure
-    columns = [desc[0] for desc in cur.description]
-    results = [dict(zip(columns, row)) for row in cur.fetchall()]
-    
+    results = [dict(row) for row in conn.execute(sql_query, (search_term,)).fetchall()]
     conn.close()
     
     return results
 
-# --- Flask Routes (URLs) ---
+# --- 2. Flask Routes (URL Endpoints) ---
 
 @app.route('/', methods=['GET'])
 def index():
-    """Handles the initial home page load (GET request)."""
-    # Only render the HTML template; search happens via AJAX now.
-    return render_template('index.html')
+    """Načte hlavní šablonu (index.html)."""
+    # Musíme použít render_template, pokud je index.html ve složce 'templates'
+    # Pokud je index.html vedle app.py, musíme ho servírovat jako statický soubor
+    try:
+        return render_template('index.html')
+    except:
+        # Fallback, pokud není složka 'templates'
+        return send_from_directory('.', 'index.html')
 
 
-# --- NEW DYNAMIC SEARCH ROUTE ---
+# Endpoint pro hlavní načtení dat (používán app.js)
+@app.route('/api/products', methods=['GET'])
+def api_products():
+    """Vrátí všechna data pro hlavní zobrazení a filtry v JSONu."""
+    products = fetch_all_products()
+    return jsonify(products)
+
+
+# Endpoint pro vyhledávání (používán app.js)
 @app.route('/search', methods=['POST'])
 def search_api():
-    """Handles AJAX POST requests from the front-end and returns JSON data."""
-    # Get the search term from the JSON payload
+    """Zpracuje AJAX POST dotaz a vrátí JSON výsledky pro modální okno."""
     data = request.get_json()
     search_query = data.get('query', '').strip()
     
     if search_query:
         results = search_database(search_query)
-        # Return the data as JSON
         return jsonify({'results': results})
         
-    return jsonify({'results': []}) # Return empty list if query is empty
+    return jsonify({'results': []}) 
+
+
+# --- 3. Route pro Statické Soubory ---
+# Aby Flask našel app.js, style.css a loga uvnitř podsložky static/
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

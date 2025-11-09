@@ -6,10 +6,10 @@ class PlaneoSpider(Spider):
     name = "planeospider"
     allowed_domains = ["planeo.cz"]
     
-    # Krok offsetu je 24, jako u Datartu
+    # přepínání stránek pro zobrazení víc produktů
     OFFSET_STEP = 24
 
-    # 🎯 START: Tyto URL fungují perfektně a pokrývají hlavní kategorie.
+    # učení odkud budeme scrapovat
     start_urls = [
         "https://www.planeo.cz/velke-domaci-spotrebice",
         "https://www.planeo.cz/tv-foto-audio-video",
@@ -37,15 +37,15 @@ class PlaneoSpider(Spider):
     ]
 
     def parse(self, response):
-        # 1. Extrakce produktů (LIST SCRAPING Z GTM ATRIBUTŮ)
+        # Extrakce produktů 
         product_tiles = response.css('.c-product--catalogue[data-gtm-product-id]')
         
         if not product_tiles:
-            # Důležité: Pokud na stránce nejsou produkty, ukončíme stránkování pro tuto kategorii.
+            # Pokud na stránce nejsou produkty, ukončíme stránkování pro tuto kategorii
             self.logger.info(f"Stránkování dokončeno na URL: {response.url} (Nenalezeny žádné produkty/dlaždice)")
             return
         
-        # Extrakce dat (zůstává beze změny, je funkční)
+        # Extrakce dat
         for tile in product_tiles:
             item_name = tile.attrib.get('data-gtm-product-name')
             item_price_gross = tile.attrib.get('data-gtm-product-price')
@@ -69,16 +69,16 @@ class PlaneoSpider(Spider):
                     "category": item_category_raw
                 }
                 
-        # 2. Navigace na další stránku (STRÁNKOVÁNÍ POMOCÍ INKREMENTACE OFFSETU)
+        # Navigace na další stránku (STRÁNKOVÁNÍ POMOCÍ INKREMENTACE OFFSETU)
         
-        # a) Zjistíme aktuální URL
+        # Zjistíme aktuální URL
         current_url = response.url
         
-        # b) Rozparsujeme URL, abychom zjistili aktuální offset
+        # Rozparsujeme URL, abychom zjistili aktuální offset
         parsed_url = urlparse(current_url)
         query_params = parse_qs(parsed_url.query)
         
-        # c) Zjistíme aktuální offset nebo nastavíme na 0
+        # Zjistíme aktuální offset nebo nastavíme na 0
         current_offset = 0
         if 'offset' in query_params:
             try:
@@ -86,10 +86,10 @@ class PlaneoSpider(Spider):
             except ValueError:
                 current_offset = 0 # Pokud je offset vadný, začneme od nuly
 
-        # d) Vypočítáme nový offset
+        # Vypočítáme nový offset
         new_offset = current_offset + self.OFFSET_STEP
         
-        # e) Vytvoříme novou URL s novým offsetem
+        # Vytvoříme novou URL s novým offsetem
         query_params['offset'] = [str(new_offset)]
         
         # Znovu sestavíme query string a celou URL
@@ -100,6 +100,6 @@ class PlaneoSpider(Spider):
         
         self.logger.info(f"Vytvářím odkaz na další stránku: {next_page_url}")
         
-        # f) Pokračujeme na novou URL
+        # Pokračujeme na novou URL
         # Použijeme Request, abychom se vyhnuli chybám v response.follow
         yield Request(url=next_page_url, callback=self.parse)

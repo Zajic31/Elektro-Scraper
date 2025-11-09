@@ -1,92 +1,280 @@
-document.getElementById('search-button').addEventListener('click', function() {
-    const query = document.getElementById('search_item').value.trim();
+// --- 1. Konfigurace a Globální Stav ---
+let allProducts = []; 
+let currentFilters = { categories: [], sources: [] }; 
+
+// !!! OPRAVA LOGA: Klíče musí odpovídat tomu, co je v DB (např. "dtrspider")
+const logoMap = {
+    // Tady musí být přesně to, co máš ve sloupci 'source_site' v DB
+    'dtrspider': '/static/logos/datart.png', 
+    'planeospider': '/static/logos/planeo.png',
+    'mironetspider': '/static/logos/mironet.png',
+    
+    // Fallbacky, kdybys to měl čistě (pro jistotu)
+    'datart': '/static/logos/datart.png', 
+    'planeo': '/static/logos/planeo.png',
+    'mironet': '/static/logos/mironet.png',
+    'default': '/static/logos/default.png',
+};
+
+// --- 2. Tmavý Režim Logika (Funkční) ---
+function toggleDarkMode() {
+    const body = document.body;
+    body.classList.toggle('dark-mode');
+    
+    const isDarkMode = body.classList.contains('dark-mode');
+    localStorage.setItem('dark-mode', isDarkMode);
+
+    const icon = document.querySelector('#dark-mode-toggle i');
+    if (icon) {
+        if (isDarkMode) {
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        } else {
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
+        }
+    }
+}
+
+function loadDarkModeState() {
+    const isDarkMode = localStorage.getItem('dark-mode') === 'true';
+    const body = document.body;
+    const icon = document.querySelector('#dark-mode-toggle i');
+
+    if (isDarkMode) {
+        body.classList.add('dark-mode');
+        if (icon) {
+            icon.classList.add('fa-sun');
+            icon.classList.remove('fa-moon');
+        }
+    } else if (icon) {
+        icon.classList.add('fa-moon');
+        icon.classList.remove('fa-sun');
+    }
+}
+
+
+// --- 3. Vykreslování Produktů a Filtrů (Hlavní stránka) ---
+
+function createProductCard(product) {
+    // Hledáme logo podle toho, co je v DB
+    const sourceSiteKey = product.source_site ? product.source_site.toLowerCase() : 'default';
+    const logoSrc = logoMap[sourceSiteKey] || logoMap.default;
+    const ratingHtml = product.rating ? `<span class="product-rating">⭐ ${product.rating}</span>` : '';
+
+    return `
+        <div class="product-card" data-category="${product.category || 'Neznámá'}" data-source="${product.source_site || 'Neznámý'}">
+            <div class="product-info">
+                <div class="source-logo-container">
+                    <img src="${logoSrc}" alt="${product.source_site} logo" class="source-logo">
+                </div>
+                <h3 class="product-title">${product.title}</h3>
+                <p class="product-category">Kategorie: ${product.category || 'N/A'}</p>
+                ${ratingHtml}
+            </div>
+            <div class="price-box">
+                <span class="product-price">${(product.price || 0).toLocaleString('cs-CZ')} Kč</span>
+                <a href="${product.link}" target="_blank" class="link-button">Koupit</a>
+            </div>
+        </div>
+    `;
+}
+
+// Funkce pro filtry (zůstávají stejné)
+function getUniqueOptions(data, key) {
+    return [...new Set(data.map(item => item[key]).filter(Boolean))].sort(); 
+}
+
+function renderFilters() {
+    const categories = getUniqueOptions(allProducts, 'category');
+    const sources = getUniqueOptions(allProducts, 'source_site');
+    
+    const categoryContainer = document.getElementById('category-filters');
+    const sourceContainer = document.getElementById('source-filters');
+
+    const createFilterHtml = (options, type) => options.map(option => `
+        <label>
+            <input type="checkbox" data-filter-type="${type}" value="${option}">
+            ${option}
+        </label>
+    `).join('');
+
+    if (categoryContainer) categoryContainer.innerHTML = createFilterHtml(categories, 'category');
+    if (sourceContainer) sourceContainer.innerHTML = createFilterHtml(sources, 'source');
+
+    document.querySelectorAll('.filter-options input').forEach(checkbox => {
+        checkbox.addEventListener('change', updateFilters);
+    });
+}
+
+function updateFilters(event) {
+    const checkbox = event.target;
+    const type = checkbox.dataset.filterType;
+    const value = checkbox.value;
+    const filterArray = currentFilters[type === 'category' ? 'categories' : 'sources'];
+
+    if (checkbox.checked) {
+        filterArray.push(value);
+    } else {
+        const index = filterArray.indexOf(value);
+        if (index > -1) {
+            filterArray.splice(index, 1);
+        }
+    }
+    filterAndRenderProducts(); 
+}
+
+function filterAndRenderProducts() {
+    const listContainer = document.getElementById('product-list');
+    if (!listContainer) return;
+    
+    const activeCategories = currentFilters.categories.length > 0;
+    const activeSources = currentFilters.sources.length > 0;
+
+    const filteredData = allProducts.filter(product => {
+        const matchesCategory = !activeCategories || currentFilters.categories.includes(product.category);
+        const matchesSource = !activeSources || currentFilters.sources.includes(product.source_site);
+        return matchesCategory && matchesSource;
+    });
+
+    listContainer.innerHTML = filteredData.map(createProductCard).join('');
+    
+    const resultsHeader = document.querySelector('.results-area h2');
+    if (resultsHeader) {
+        resultsHeader.textContent = `Nalezené produkty (${filteredData.length})`;
+    }
+}
+
+
+// --- 4. Načítání Dat z Backendu (DB) ---
+
+async function loadDataFromDB() {
+    try {
+        const response = await fetch('/api/products'); 
+        if (!response.ok) throw new Error('Chyba při načítání API');
+        
+        const products = await response.json();
+        allProducts = products;
+        
+        renderFilters();
+        filterAndRenderProducts(); 
+        
+    } catch (error) {
+        console.error("Chyba při inicializaci dat:", error);
+    }
+}
+
+
+// --- 5. Logika Vyhledávání (Opraveno vkládání do modálu) ---
+
+function executeSearch() {
+    const queryInput = document.getElementById('search-input'); 
+    if (!queryInput) return;
+    
+    const query = queryInput.value.trim(); 
+    
     const modal = document.getElementById('resultsModal');
     const modalTitle = document.getElementById('modal-title');
     const modalBody = document.getElementById('modal-body');
-    const statusMessage = document.getElementById('status-message');
 
     if (!query) {
-        statusMessage.textContent = "Please enter a search term.";
+        alert("Zadej hledaný výraz.");
+        return;
+    }
+    if (!modal || !modalBody || !modalTitle) {
+        console.error("Chyba: Chybí elementy modálního okna v HTML.");
         return;
     }
 
-    // 1. Update status and clear old results
-    statusMessage.textContent = "Searching database...";
-    modalBody.innerHTML = ''; // Clear previous results
+    modalBody.innerHTML = '<p>Hledám v databázi...</p>'; 
+    modalTitle.textContent = `Hledání pro "${query}"...`;
     
-    // 2. Make an AJAX POST request to the /search endpoint
     fetch('/search', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query })
     })
     .then(response => response.json())
     .then(data => {
         const results = data.results;
         
-        // 3. Update Modal Title
-        modalTitle.textContent = `Results for "${query}" (${results.length} found)`;
+        modalTitle.textContent = `Výsledky pro "${query}" (${results.length} nalezeno)`;
         
-        // 4. Check for No Results
         if (results.length === 0) {
-            modalBody.innerHTML = `<p style="text-align: center; color: #dc3545;">No products found matching "${query}".</p>`;
+            modalBody.innerHTML = `<p style="text-align: center; color: var(--text-color);">Nebyly nalezeny žádné produkty.</p>`;
         } else {
-            // 5. Build Result Cards and append to modal body
+            modalBody.innerHTML = ''; // Vyčistit "Hledám..."
+            
+            // !!! OPRAVA ZDE: Používáme insertAdjacentHTML
             results.forEach(item => {
-                // Use Intl.NumberFormat for clean currency display (e.g., 53 990 Kč)
-                const priceFormatted = new Intl.NumberFormat('cs-CZ', { 
-                    style: 'currency', 
-                    currency: 'CZK',
-                    minimumFractionDigits: 0
-                }).format(item.price);
-
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                
-                card.innerHTML = `
-                    <div class="details">
-                        <div class="title-site">${item.title}</div>
-                        <div class="site-info">From: ${item.source_site}</div>
-                    </div>
-                    <div class="price-rating">
-                        <div class="price">${priceFormatted}</div>
-                        <div class="rating">Rating: 
-                            ${item.rating ? `${item.rating} / 5 ⭐` : 'N/A'}
-                        </div>
-                    </div>
-                    <a href="${item.link}" target="_blank" class="view-link">View</a>
-                `;
-                modalBody.appendChild(card);
+                const cardHtml = createProductCard(item); 
+                // Tato metoda je spolehlivější než appendChild s wrapperem
+                modalBody.insertAdjacentHTML('beforeend', cardHtml);
             });
         }
         
-        // 6. Show the Pop-up
         modal.style.display = 'block';
-        statusMessage.textContent = "Search complete.";
 
     })
     .catch(error => {
         console.error('Fetch error:', error);
-        statusMessage.textContent = "An error occurred during search.";
+        modalBody.innerHTML = `<p style="color: red;">Při vyhledávání došlo k chybě. Zkontroluj konzoli a Flask server.</p>`;
     });
+}
+
+// Logika zavírání modálního okna
+function setupModalLogic() {
+    const modal = document.getElementById('resultsModal');
+    if (!modal) return; 
+
+    const span = document.getElementsByClassName("close-btn")[0];
+
+    if (span) {
+         span.onclick = function() {
+            modal.style.display = "none";
+        }
+    }
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    }
+}
+
+
+// --- 6. Inicializace (Spuštění všeho) ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Tmavý režim
+    loadDarkModeState();
+    
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+    } else {
+        console.error("Chyba: Tlačítko tmavého režimu (ID: dark-mode-toggle) nebylo nalezeno.");
+    }
+
+    // 2. Načtení dat z DB (pro filtry a hlavní seznam)
+    loadDataFromDB(); 
+
+    // 3. PŘIPOJENÍ VYHLEDÁVÁNÍ (Enter v poli)
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                executeSearch();
+            }
+        });
+    }
+    
+    // 4. PŘIPOJENÍ VYHLEDÁVÁNÍ (Klik na tlačítko)
+    const searchButton = document.getElementById('search-button');
+    if (searchButton) {
+        searchButton.addEventListener('click', executeSearch);
+    }
+    
+    // 5. Logika modálního okna
+    setupModalLogic();
 });
-
-// --- Modal Display Logic ---
-
-// Get the modal and the close button
-const modal = document.getElementById('resultsModal');
-const span = document.getElementsByClassName("close-btn")[0];
-
-// Close the modal when the user clicks on (x)
-span.onclick = function() {
-  modal.style.display = "none";
-}
-
-// Close the modal when the user clicks anywhere outside of it
-window.onclick = function(event) {
-  if (event.target == modal) {
-    modal.style.display = "none";
-  }
-}

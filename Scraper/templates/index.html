@@ -1,38 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ Price Comparison Dashboard</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Srovnávač cen - Projekt</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="header">
-        <h1>⚡ Price Comparison Dashboard</h1>
-        <p>Search your scraped products to find the best deals.</p>
-    </div>
 
-    <div class="main-content">
-        <h2>Find Products</h2>
-        
-        <div class="search-container">
-            <input type="text" id="search_item" placeholder="Enter product name (e.g., Samsung Refrigerator)">
-            <button id="search-button">Search</button>
+    <header>
+        <div class="header-content">
+            <h1 class="logo">
+                <i class="fas fa-search-dollar"></i> Srovnávač cen
+            </h1>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Hledat produkty...">
+                
+                <button id="search-button" aria-label="Hledat">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <button id="dark-mode-toggle" aria-label="Přepnout tmavý režim">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
+    </header>
+
+    <main class="main-container">
         
-        <p id="status-message" style="margin-top: 15px; color: #666;"></p>
-    </div>
+        <aside class="sidebar">
+            <h2>Filtry</h2>
+            <div class="filter-group">
+                <h3>Kategorie</h3>
+                <div id="category-filters" class="filter-options">
+                    </div>
+            </div>
+            <div class="filter-group">
+                <h3>Obchod</h3>
+                <div id="source-filters" class="filter-options">
+                    </div>
+            </div>
+        </aside>
+
+        <section class="results-area">
+            <h2>Nalezené produkty</h2>
+            <div id="product-list" class="product-grid">
+                </div>
+        </section>
+
+    </main>
 
     <div id="resultsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
-            <h2 id="modal-title">Search Results</h2>
+            <h2 id="modal-title">Výsledky vyhledávání</h2>
             <div id="modal-body">
                 </div>
         </div>
     </div>
-    
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+
+    <script src="/static/app.js"></script>
 </body>
 </html>
