@@ -13,6 +13,8 @@ class MironetSpider(scrapy.Spider):
     custom_settings = {
         'DOWNLOAD_DELAY': 2,
         'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
+        'CONCURRENT_REQUESTS': 1,  # Process one at a time
+        'DEPTH_LIMIT': 0,  # No depth limit
     }
 
     def parse(self, response):
@@ -32,102 +34,38 @@ class MironetSpider(scrapy.Spider):
             full_url = response.urljoin(link)
             
             # Skip subcategories with long paths (keep only main categories)
-            # E.g., keep /telefony/mobilni-telefony+c10737/ but skip deeper ones
             path_parts = full_url.split('/')
-            # Count directory levels (ignore empty strings from leading/trailing /)
+            # Count directory levels
             dir_count = len([p for p in path_parts if p and '+c' not in p and 'www.mironet.cz' not in p])
             
-            # Only keep categories with 1-2 directory levels (main categories)
-            if dir_count <= 2 and '+c' in full_url and full_url not in unique_categories:
+            # Keep categories with 1-2 directory levels (main categories)
+            if dir_count <= 2 and '+c' in full_url:
                 unique_categories.add(full_url)
         
         self.logger.info(f"Found {len(unique_categories)} main categories to scrape")
         
         # Visit each category
         for category_url in sorted(unique_categories):
-            self.logger.info(f"Queuing category: {category_url}")
-            yield scrapy.Request(category_url, callback=self.parse_category, errback=self.handle_error)
-    
-    def handle_error(self, failure):
-        """Handle request errors - don't stop the spider"""
-        self.logger.error(f"Request failed: {failure.request.url}")
-        # Continue with other requests
+            self.logger.info(f"📂 Queuing: {category_url}")
+            yield scrapy.Request(category_url, callback=self.parse_category, dont_filter=True)
     
     def parse_category(self, response):
         """Parse a category page"""
         
-    def parse_category(self, response):
-        """Parse a category page"""
+        self.logger.info(f"🔍 Parsing: {response.url}")
         
-        self.logger.info(f"Parsing category page: {response.url}")
-        
-        # Try to extract category ID from URL (e.g., +c10737)
-        category_match = re.search(r'\+c(\d+)', response.url)
-        if category_match:
-            category_id = category_match.group(1)
-            # Try the old API endpoint format (but don't block on it)
-            api_url = f"https://www.mironet.cz/rest/produkt/list/?categoryId={category_id}&page=1&limit=50"
-            self.logger.debug(f"Trying API with category {category_id}")
-            yield scrapy.Request(api_url, callback=self.parse_api, errback=lambda _: None, dont_filter=True)
-        
-        # Parse HTML - this is the main method
+        # Parse HTML to extract products
+        product_count = 0
         for item in self.parse_html(response):
-            yield item
-    
-    def parse_api(self, response):
-        """Parse JSON API response"""
-        try:
-            data = json.loads(response.text)
-            products = data.get("produkty") or data.get("data") or data.get("products") or []
-            
-            if products:
-                self.logger.info(f"API works! Found {len(products)} products")
-                
-                for p in products:
-                    title = p.get("nazev") or p.get("title")
-                    price = p.get("cena_s_dph") or p.get("price")
-                    url = p.get("url")
-                    rating = p.get("hodnoceni") or p.get("rating")
-                    category = p.get("kategorie_nazev") or p.get("category")
-                    
-                    if url and not url.startswith('http'):
-                        url = f"https://www.mironet.cz{url}"
-                    
-                    if isinstance(price, str):
-                        price = float(price.replace(',', '.').replace(' ', ''))
-                    
-                    if isinstance(rating, str):
-                        rating = float(rating.replace(',', '.'))
-                    
-                    if title:
-                        yield {
-                            "title": title,
-                            "price": price,
-                            "link": url,
-                            "category": category,
-                            "rating": rating,
-                        }
-                
-                # Handle pagination
-                current_page = int(data.get("page", 1))
-                total_pages = int(data.get("totalPages", 1))
-                
-                if current_page < total_pages:
-                    # Build next page URL
-                    next_url = response.url
-                    if 'page=' in next_url:
-                        next_url = re.sub(r'page=\d+', f'page={current_page + 1}', next_url)
-                    else:
-                        separator = '&' if '?' in next_url else '?'
-                        next_url = f"{next_url}{separator}page={current_page + 1}"
-                    
-                    yield scrapy.Request(next_url, callback=self.parse_api)
-            else:
-                # No products in API, try HTML
-                self.logger.warning("API returned no products, trying HTML")
-                
-        except json.JSONDecodeError:
-            self.logger.warning("Not JSON, trying HTML parsing")
+            if item and isinstance(item, dict) and 'title' in item:
+                product_count += 1
+                yield item
+            elif hasattr(item, 'url'):
+                # It's a Request (pagination)
+                yield item
+        
+        if product_count > 0:
+            self.logger.info(f"✅ Found {product_count} products on this page")
     
     def parse_html(self, response):
         """Parse HTML product listing - extract from JavaScript data"""
@@ -135,32 +73,24 @@ class MironetSpider(scrapy.Spider):
         # Extract category from URL
         category = self.extract_category(response)
         
-        self.logger.info(f"Extracting products from category: {category}")
-        
-        # Mironet embeds product data in JavaScript!
-        # Look for: items: [ { item_id: "xxx", item_name: "xxx", price: xxx } ]
-        
-        scraped_count = 0
-        
         # Find all script tags
         scripts = response.css('script::text').getall()
         
+        scraped_count = 0
         found_items = False
         
         for script in scripts:
             # Look for the items array in JavaScript
             if 'items:' in script and 'item_id:' in script:
-                self.logger.info("Found JavaScript with product data!")
+                self.logger.debug("Found JavaScript with product data!")
                 found_items = True
                 
                 # Extract the items array using regex
-                # Pattern: items: [ ... ]
                 items_match = re.search(r'items:\s*\[(.*?)\](?=\s*[,}])', script, re.DOTALL)
                 
                 if items_match:
                     items_str = items_match.group(1)
                     
-                    # Split by individual items (each starts with {)
                     # Find all item objects
                     item_pattern = r'\{[^}]*item_id:[^}]*\}'
                     item_matches = re.finditer(item_pattern, items_str, re.DOTALL)
@@ -177,8 +107,7 @@ class MironetSpider(scrapy.Spider):
                             if item_name:
                                 title = item_name.group(1)
                                 
-                                # Decode unicode escapes manually (safer than unicode_escape)
-                                # Replace common Czech characters
+                                # Decode unicode escapes manually
                                 unicode_map = {
                                     '\\u00e1': 'á', '\\u00c1': 'Á',
                                     '\\u00e9': 'é', '\\u00c9': 'É',
@@ -203,7 +132,7 @@ class MironetSpider(scrapy.Spider):
                                 
                                 price_val = float(price.group(1)) if price else None
                                 
-                                # Build product URL from item_id
+                                # Build product URL
                                 link = None
                                 if item_id:
                                     link = f"https://www.mironet.cz/produkt/d{item_id.group(1)}"
@@ -223,69 +152,23 @@ class MironetSpider(scrapy.Spider):
                 break  # Found the data, no need to check other scripts
         
         if scraped_count == 0 and not found_items:
-            self.logger.warning(f"Could not find JavaScript product data on {response.url}")
-            # Try HTML fallback
-            for item in self.parse_html_fallback(response, category):
-                scraped_count += 1
-                yield item
+            self.logger.warning(f"⚠️ No products found in {category}")
         
-        self.logger.info(f"✅ Scraped {scraped_count} products from {category}")
-        
-        # Pagination
+        # Pagination - look for next page
         next_page = (
             response.css('a.next::attr(href)').get() or
             response.css('a[rel="next"]::attr(href)').get() or
             response.css('.pagination a:contains("›")::attr(href)').get() or
-            response.css('.pagination a:contains("Další")::attr(href)').get()
+            response.css('.pagination .next a::attr(href)').get()
         )
         
         if next_page:
-            self.logger.info(f"Following pagination: {next_page}")
-            yield response.follow(next_page, callback=self.parse_category)
-    
-    def parse_html_fallback(self, response, category):
-        """Fallback HTML parsing if JavaScript extraction fails"""
-        
-        products = response.css('[data-product-id], .product-item, .product')
-        
-        if not products:
-            return 0
-        
-        count = 0
-        for idx, product in enumerate(products):
-            # Use same extraction logic as before
-            title = (
-                product.css('h3 a::text').get() or
-                product.css('h3::text').get() or
-                product.css('h2 a::text').get() or
-                product.css('[itemprop="name"]::text').get()
-            )
-            
-            if not title:
-                continue
-            
-            title = ' '.join(title.split()).strip()
-            
-            price_text = product.css('.price::text, [data-price]::attr(data-price)').get()
-            price = self.parse_price(price_text)
-            
-            link = product.css('a::attr(href)').get()
-            if link:
-                link = response.urljoin(link)
-            
-            count += 1
-            yield {
-                'title': title,
-                'price': price,
-                'link': link,
-                'category': category,
-                'rating': None,
-            }
-        
-        return count
+            self.logger.info(f"➡️ Next page found")
+            yield response.follow(next_page, callback=self.parse_category, dont_filter=True)
     
     def extract_category(self, response):
         """Extract category from breadcrumbs or URL"""
+        # Try breadcrumbs first
         breadcrumbs = response.css('.breadcrumbs a::text, .breadcrumb a::text').getall()
         if breadcrumbs:
             categories = [b.strip() for b in breadcrumbs if b.strip().lower() not in ['home', 'domů', 'úvod']]
@@ -294,9 +177,12 @@ class MironetSpider(scrapy.Spider):
         
         # Extract from URL
         url_parts = response.url.rstrip('/').split('/')
-        if url_parts:
-            category = url_parts[-1].replace('-', ' ').title()
-            return category
+        for part in reversed(url_parts):
+            if '+c' in part:
+                # Clean up the category name
+                category = part.split('+c')[0].replace('-', ' ').title()
+                if category:
+                    return category
         
         return "Unknown"
     
@@ -316,16 +202,3 @@ class MironetSpider(scrapy.Spider):
             return float(price_cleaned) if price_cleaned else None
         except (ValueError, AttributeError):
             return None
-    
-    def parse_rating(self, rating_text):
-        """Parse rating from text"""
-        if not rating_text:
-            return None
-        
-        match = re.search(r'(\d+([.,]\d+)?)', str(rating_text))
-        if match:
-            try:
-                return float(match.group(1).replace(',', '.'))
-            except ValueError:
-                return None
-        return None
