@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product_name }} - Porovnání Cen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .back-btn {
+            text-decoration: none;
+            color: #2563eb;
+            font-size: 24px;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #f3f4f6;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .product-header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .product-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+        
+        .product-category {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        
+        .sellers-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .sellers-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .sellers-count {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        
+        .sellers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .seller-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .seller-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .seller-info {
+            flex: 1;
+        }
+        
+        .seller-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+        
+        .seller-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #e0e7ff;
+            color: #3730a3;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .seller-rating {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .seller-price {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 0 30px;
+        }
+        
+        .seller-link {
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        .seller-link:hover {
+            background: #1d4ed8;
+        }
+        
+        .best-price {
+            border: 3px solid #10b981;
+        }
+        
+        .best-price-badge {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .seller-card {
+            position: relative;
+        }
+        
+        .no-sellers {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 12px;
+            color: #6b7280;
+        }
+        
+        .price-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .stat-value.green {
+            color: #10b981;
+        }
+        
+        .stat-value.orange {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <a href="/" class="back-btn">←</a>
+            <div class="logo">🔍 PriceHolder</div>
+        </div>
+    </div>
+    
+    <!-- Product Info -->
+    <div class="container">
+        <div class="product-header">
+            <h1 class="product-title">{{ product_name }}</h1>
+            {% if sellers %}
+                <div class="product-category">{{ sellers[0].category or 'Elektronika' }}</div>
+            {% endif %}
+        </div>
+        
+        {% if sellers %}
+            <!-- Price Statistics -->
+            <div class="price-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Nejnižší cena</div>
+                    <div class="stat-value green">
+                        {% set min_price = sellers | selectattr('price', 'ne', None) | map(attribute='price') | min %}
+                        {{ "%.0f" | format(min_price) }} Kč
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Počet obchodů</div>
+                    <div class="stat-value">{{ sellers | length }}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Nejvyšší cena</div>
+                    <div class="stat-value orange">
+                        {% set max_price = sellers | selectattr('price', 'ne', None) | map(attribute='price') | max %}
+                        {{ "%.0f" | format(max_price) }} Kč
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sellers List -->
+            <div class="sellers-header">
+                <h2 class="sellers-title">Dostupné nabídky</h2>
+                <span class="sellers-count">{{ sellers | length }} obchodů</span>
+            </div>
+            
+            <div class="sellers-list">
+                {% set min_price = sellers | selectattr('price', 'ne', None) | map(attribute='price') | min %}
+                {% for seller in sellers %}
+                <div class="seller-card {% if seller.price == min_price %}best-price{% endif %}">
+                    {% if seller.price == min_price %}
+                        <div class="best-price-badge">✨ Nejlepší cena</div>
+                    {% endif %}
+                    
+                    <div class="seller-info">
+                        <div class="seller-name">
+                            {% if 'datart' in seller.source_site.lower() %}
+                                <span class="seller-badge" style="background: #ff6b35; color: white;">Datart</span>
+                            {% elif 'mironet' in seller.source_site.lower() %}
+                                <span class="seller-badge" style="background: #4ecdc4; color: white;">Mironet</span>
+                            {% elif 'alza' in seller.source_site.lower() %}
+                                <span class="seller-badge" style="background: #00a651; color: white;">Alza</span>
+                            {% else %}
+                                <span class="seller-badge">{{ seller.source_site }}</span>
+                            {% endif %}
+                        </div>
+                        {% if seller.rating %}
+                            <div class="seller-rating">⭐ {{ seller.rating }} / 5</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="seller-price">
+                        {% if seller.price %}
+                            {{ "%.0f" | format(seller.price) }} Kč
+                        {% else %}
+                            Cena na dotaz
+                        {% endif %}
+                    </div>
+                    
+                    {% if seller.link %}
+                        <a href="{{ seller.link }}" target="_blank" class="seller-link">
+                            Zobrazit →
+                        </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-sellers">
+                <h2>Produkt nebyl nalezen v žádném obchodě</h2>
+                <p>Zkuste hledat podobný produkt</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
